@@ -16,7 +16,7 @@ import static io.vertx.core.json.Json.decodeValue;
 import static io.vertx.core.json.Json.encodeToBuffer;
 
 /**
- * Provides Vert.x-based pipes abstraction over Apache Kafka. This class is a central point for managing
+ * Provides Vert.x-based data pipes abstraction over Apache Kafka. This class is a central point for managing
  * your pipes workflow.
  */
 public class Pipes {
