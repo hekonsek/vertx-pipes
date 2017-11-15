@@ -8,6 +8,9 @@ public class SimpleFunctionRegistry implements FunctionRegistry {
     private final Map<String, Function> functions = new LinkedHashMap<>();
 
     public void registerFunction(String functionName, Function function) {
+        if(function instanceof StartableFunction) {
+            ((StartableFunction) function).start();
+        }
         functions.put(functionName, function);
     }
 

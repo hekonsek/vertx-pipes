@@ -21,19 +21,26 @@ import static io.vertx.core.json.Json.encodeToBuffer;
  */
 public class Pipes {
 
+    // Collaborators
+
     private final Vertx vertx;
 
     private final FunctionRegistry functionRegistry;
 
+    // Constructors
+
     public Pipes(Vertx vertx, FunctionRegistry functionRegistry) {
         this.vertx = vertx;
         this.functionRegistry = functionRegistry;
+
         this.vertx.eventBus().registerDefaultCodec(LinkedHashMap.class, new LinkedHashMapJsonCodec());
     }
 
     public static Pipes pipes(Vertx vertx, FunctionRegistry functionRegistry) {
         return new Pipes(vertx, functionRegistry);
     }
+
+    // Operations
 
     public void startPipe(Pipe pipe) {
         Function function = functionRegistry.function(pipe.getFunction());
