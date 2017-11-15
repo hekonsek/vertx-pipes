@@ -20,7 +20,11 @@ public class Pipe {
     private final Map<String, Object> configuration;
 
     public static Pipe pipe(String id, String source, String function) {
-        return new Pipe(id, source, function, null, emptyMap());
+        return pipe(id, source, function, null);
+    }
+
+    public static Pipe pipe(String id, String source, String function, String target) {
+        return new Pipe(id, source, function, target, emptyMap());
     }
 
 }

@@ -1,18 +1,24 @@
 package com.github.hekonsek.vertx.pipes;
 
+import com.github.hekonsek.vertx.pipes.internal.KafkaProducerBuilder;
 import com.github.hekonsek.vertx.pipes.internal.LinkedHashMapJsonCodec;
-import com.google.common.collect.ImmutableMap;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.Json;
-import io.vertx.kafka.client.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.BytesDeserializer;
-import org.apache.kafka.common.serialization.StringDeserializer;
+import io.vertx.kafka.client.producer.KafkaProducer;
+import io.vertx.kafka.client.producer.impl.KafkaProducerRecordImpl;
 import org.apache.kafka.common.utils.Bytes;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.github.hekonsek.vertx.pipes.internal.KafkaConsumerBuilder.kafkaConsumer;
+import static io.vertx.core.buffer.Buffer.buffer;
+import static io.vertx.core.json.Json.decodeValue;
+import static io.vertx.core.json.Json.encodeToBuffer;
+
+/**
+ * Provides Vert.x-based pipes abstraction over Apache Kafka. This class is a central point for managing
+ * your pipes workflow.
+ */
 public class Pipes {
 
     private final Vertx vertx;
@@ -33,14 +39,17 @@ public class Pipes {
         Function function = functionRegistry.function(pipe.getFunction());
         vertx.eventBus().consumer(pipe.getId(), function);
 
-        Map<String, String> consumerConfig = ImmutableMap.of(
-                "group.id", pipe.getId(),
-                "bootstrap.servers", "localhost:9092",
-                "value.deserializer", BytesDeserializer.class.getName(),
-                "key.deserializer", StringDeserializer.class.getName());
-        KafkaConsumer.create(vertx, consumerConfig).handler(record -> {
-            byte[] value = ((Bytes) record.value()).get();
-            vertx.eventBus().send(pipe.getId(), Json.decodeValue(Buffer.buffer(value), Map.class));
+        KafkaProducer<String, Bytes> kafkaProducer = KafkaProducerBuilder.kafkaProducer(vertx);
+        kafkaConsumer(vertx, pipe.getId()).handler(record -> {
+            byte[] eventBytes = record.value().get();
+            vertx.eventBus().send(pipe.getId(), decodeValue(buffer(eventBytes), Map.class), response -> {
+                if(pipe.getTarget() != null) {
+                    if (response.succeeded()) {
+                        Map<String, Object> body = (Map<String, Object>) response.result().body();
+                        kafkaProducer.write(new KafkaProducerRecordImpl<>(pipe.getTarget(), record.key(), new Bytes(encodeToBuffer(body).getBytes())));
+                    }
+                }
+            });
         }).subscribe(pipe.getSource());
     }
 
