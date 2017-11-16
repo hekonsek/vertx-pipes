@@ -39,6 +39,8 @@ public class PipesTest {
 
     Pipes pipes = pipes(vertx(), functionRegistry);
 
+    String key = randomUUID().toString();
+
     Map<String, Object> event = ImmutableMap.of("foo", "bar");
 
     String eventJson = encode(event);
@@ -54,33 +56,37 @@ public class PipesTest {
     }
 
     @Test(timeout = 5000)
-    public void functionShouldReceiveEventFromPipe(TestContext context) throws InterruptedException {
-        // Given
+    public void functionShouldReceiveEventFromPipe(TestContext context) {
         Async async = context.async();
         functionRegistry.registerFunction("function", event -> {
             assertThat(event.body()).isEqualTo(this.event);
             async.complete();
         });
-        pipes.startPipe(sinkPipe);
-
-        // When
-        Thread.sleep(2000);
-        pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
+        pipes.startPipe(sinkPipe, event ->  {
+            pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
+        });
     }
 
     @Test(timeout = 5000)
-    public void shouldWriteToTargetTopic(TestContext context) throws InterruptedException {
-        // Given
+    public void functionShouldReceiveEventKey(TestContext context) {
+        Async async = context.async();
+        functionRegistry.registerFunction("function", event -> {
+            assertThat(event.headers().get(Pipes.HEADER_KEY)).isEqualTo(key);
+            async.complete();
+        });
+        pipes.startPipe(sinkPipe, event -> {
+            pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, key, eventBytes));
+        });
+    }
+
+    @Test(timeout = 5000)
+    public void shouldWriteToTargetTopic(TestContext context) {
         Async async = context.async();
         functionRegistry.registerFunction("function", event -> event.reply(event.body()));
-        pipes.startPipe(pipe);
-
-        // When
-        Thread.sleep(2000);
-        pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
-
-        // Then
-        pipeConsumer(vertx()).handler(event -> async.complete()).subscribe(target);
+        pipes.startPipe(pipe, event -> {
+            pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
+            pipeConsumer(vertx()).handler(event2 -> async.complete()).subscribe(target);
+        });
     }
 
 }

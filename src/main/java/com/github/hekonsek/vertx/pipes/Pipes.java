@@ -6,10 +6,13 @@ import com.github.hekonsek.vertx.pipes.internal.LinkedHashMapJsonCodec;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.kafka.admin.AdminUtils;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.impl.KafkaProducerRecordImpl;
 import org.apache.kafka.common.utils.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,6 +26,12 @@ import static io.vertx.core.json.Json.encodeToBuffer;
  * your pipes workflow.
  */
 public class Pipes {
+
+    private final static Logger LOG = LoggerFactory.getLogger(Pipes.class);
+
+    // Constants
+
+    public static final String HEADER_KEY = "pipes.key";
 
     // Collaborators
 
@@ -53,8 +62,9 @@ public class Pipes {
 
                 KafkaProducer<String, Bytes> kafkaProducer = KafkaProducerBuilder.pipeProducer(vertx);
                 KafkaConsumerBuilder.pipeConsumer(vertx, pipe.getId()).handler(record -> {
-                    byte[] eventBytes = record.value().get();
-                    vertx.eventBus().send(pipe.getId(), decodeValue(buffer(eventBytes), Map.class), response -> {
+                    Map event = decodeValue(buffer(record.value().get()), Map.class);
+                    DeliveryOptions headers = new DeliveryOptions().addHeader(HEADER_KEY, record.key());
+                    vertx.eventBus().send(pipe.getId(), event, headers, response -> {
                         if (pipe.getTarget() != null) {
                             if (response.succeeded()) {
                                 Map<String, Object> body = (Map<String, Object>) response.result().body();
@@ -63,6 +73,9 @@ public class Pipes {
                         }
                     });
                 }).subscribe(pipe.getSource(), completionHandler);
+            } else {
+                LOG.debug("Cannot create source topic: " + pipe.getSource());
+                completionHandler.handle(done);
             }
         });
     }
