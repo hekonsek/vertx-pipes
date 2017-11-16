@@ -1,6 +1,8 @@
 package com.github.hekonsek.vertx.pipes;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Files;
+import io.debezium.kafka.KafkaCluster;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -9,11 +11,12 @@ import org.apache.kafka.common.utils.Bytes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.util.Map;
 
 import static com.github.hekonsek.vertx.pipes.Pipes.pipes;
-import static com.github.hekonsek.vertx.pipes.internal.KafkaConsumerBuilder.kafkaConsumer;
-import static com.github.hekonsek.vertx.pipes.internal.KafkaProducerBuilder.kafkaProducer;
+import static com.github.hekonsek.vertx.pipes.internal.KafkaConsumerBuilder.pipeConsumer;
+import static com.github.hekonsek.vertx.pipes.internal.KafkaProducerBuilder.pipeProducer;
 import static io.vertx.core.Vertx.vertx;
 import static io.vertx.core.json.Json.encode;
 import static java.util.UUID.randomUUID;
@@ -42,8 +45,16 @@ public class PipesTest {
 
     Bytes eventBytes = new Bytes(eventJson.getBytes());
 
-    @Test
-    public void functionShouldReceiveEventFromPipe(TestContext context) {
+    static {
+        try {
+            new KafkaCluster().withPorts(2181, 9092).usingDirectory(Files.createTempDir()).deleteDataPriorToStartup(true).addBrokers(1).startup();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void functionShouldReceiveEventFromPipe(TestContext context) throws InterruptedException {
         // Given
         Async async = context.async();
         functionRegistry.registerFunction("function", event -> {
@@ -53,21 +64,23 @@ public class PipesTest {
         pipes.startPipe(sinkPipe);
 
         // When
-        kafkaProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
+        Thread.sleep(2000);
+        pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
     }
 
-    @Test
-    public void shouldWriteToTargetTopic(TestContext context) {
+    @Test(timeout = 5000)
+    public void shouldWriteToTargetTopic(TestContext context) throws InterruptedException {
         // Given
         Async async = context.async();
         functionRegistry.registerFunction("function", event -> event.reply(event.body()));
         pipes.startPipe(pipe);
 
         // When
-        kafkaProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
+        Thread.sleep(2000);
+        pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
 
         // Then
-        kafkaConsumer(vertx()).handler(event -> async.complete()).subscribe(target);
+        pipeConsumer(vertx()).handler(event -> async.complete()).subscribe(target);
     }
 
 }
