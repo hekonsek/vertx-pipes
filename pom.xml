@@ -12,7 +12,7 @@
     <groupId>com.github.hekonsek</groupId>
     <artifactId>vertx-pipes</artifactId>
     <name>${project.artifactId}</name>
-    <version>0.2</version>
+    <version>0.3-SNAPSHOT</version>
 
     <properties>
         <!-- General project settings -->
@@ -263,7 +263,7 @@
         <connection>scm:git:git@github.com:hekonsek/vertx-pipes.git</connection>
         <developerConnection>scm:git:git@github.com:hekonsek/vertx-pipes.git</developerConnection>
         <url>git@github.com:hekonsek/vertx-pipes.git</url>
-        <tag>vertx-pipes-0.2</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
