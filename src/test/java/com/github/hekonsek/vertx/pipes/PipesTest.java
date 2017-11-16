@@ -28,12 +28,14 @@ public class PipesTest {
     String pipeId = randomUUID().toString();
 
     String source = randomUUID().toString();
+    
+    String function = randomUUID().toString();
 
-    Pipe sinkPipe = Pipe.pipe(pipeId, source, "function");
+    Pipe sinkPipe = Pipe.pipe(pipeId, source, function);
 
     String target = randomUUID().toString();
 
-    Pipe pipe = Pipe.pipe(pipeId, source, "function", target);
+    Pipe pipe = Pipe.pipe(pipeId, source, function, target);
 
     SimpleFunctionRegistry functionRegistry = new SimpleFunctionRegistry();
 
@@ -58,19 +60,36 @@ public class PipesTest {
     @Test(timeout = 5000)
     public void functionShouldReceiveEventFromPipe(TestContext context) {
         Async async = context.async();
-        functionRegistry.registerFunction("function", event -> {
+        functionRegistry.registerFunction(function, event -> {
             assertThat(event.body()).isEqualTo(this.event);
             async.complete();
         });
-        pipes.startPipe(sinkPipe, event ->  {
+        pipes.startPipe(sinkPipe, event -> {
             pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
         });
     }
 
     @Test(timeout = 5000)
+    public void functionShouldReceiveTheSameEventFromTwoPipes(TestContext context) {
+        Async async = context.async(3);
+        functionRegistry.registerFunction(function, event -> {
+            assertThat(event.body()).isEqualTo(this.event);
+            async.countDown();
+            if(async.count() == 1) {
+                async.complete();
+            }
+        });
+        pipes.startPipe(sinkPipe, done ->
+                pipes.startPipe(Pipe.pipe(randomUUID().toString(), source, function), event ->
+                        pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes))
+                )
+        );
+    }
+
+    @Test(timeout = 5000)
     public void functionShouldReceiveEventKey(TestContext context) {
         Async async = context.async();
-        functionRegistry.registerFunction("function", event -> {
+        functionRegistry.registerFunction(function, event -> {
             assertThat(event.headers().get(Pipes.HEADER_KEY)).isEqualTo(key);
             async.complete();
         });
@@ -82,7 +101,7 @@ public class PipesTest {
     @Test(timeout = 5000)
     public void shouldWriteToTargetTopic(TestContext context) {
         Async async = context.async();
-        functionRegistry.registerFunction("function", event -> event.reply(event.body()));
+        functionRegistry.registerFunction(function, event -> event.reply(event.body()));
         pipes.startPipe(pipe, event -> {
             pipeProducer(vertx()).write(new KafkaProducerRecordImpl<>(source, "key", eventBytes));
             pipeConsumer(vertx()).handler(event2 -> async.complete()).subscribe(target);

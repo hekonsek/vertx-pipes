@@ -40,3 +40,7 @@ Pipes pipes = pipes(vertx, functionRegistry);
 
 pipes.startPipe(pipe("myFunctionPipe", "sourceTopic", "echoFunction", "targetTopic"));
 ```
+
+## License
+
+This project is distributed under Apache 2.0 license.

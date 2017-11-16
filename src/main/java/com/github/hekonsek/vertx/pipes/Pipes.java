@@ -1,7 +1,5 @@
 package com.github.hekonsek.vertx.pipes;
 
-import com.github.hekonsek.vertx.pipes.internal.KafkaConsumerBuilder;
-import com.github.hekonsek.vertx.pipes.internal.KafkaProducerBuilder;
 import com.github.hekonsek.vertx.pipes.internal.LinkedHashMapJsonCodec;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -10,6 +8,7 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.kafka.admin.AdminUtils;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.impl.KafkaProducerRecordImpl;
+import org.apache.commons.lang3.Validate;
 import org.apache.kafka.common.utils.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.github.hekonsek.vertx.pipes.internal.KafkaConsumerBuilder.pipeConsumer;
+import static com.github.hekonsek.vertx.pipes.internal.KafkaProducerBuilder.pipeProducer;
 import static io.vertx.core.buffer.Buffer.buffer;
 import static io.vertx.core.json.Json.decodeValue;
 import static io.vertx.core.json.Json.encodeToBuffer;
@@ -39,12 +40,18 @@ public class Pipes {
 
     private final FunctionRegistry functionRegistry;
 
+    private final KafkaProducer<String, Bytes> pipeProducer;
+
     // Constructors
 
     public Pipes(Vertx vertx, FunctionRegistry functionRegistry) {
+        Validate.notNull(vertx, "Vert.x instance cannot be null.");
+        Validate.notNull(functionRegistry,  "Function registry instance cannot be null.");
+
         this.vertx = vertx;
         this.functionRegistry = functionRegistry;
 
+        pipeProducer = pipeProducer(vertx);
         this.vertx.eventBus().registerDefaultCodec(LinkedHashMap.class, new LinkedHashMapJsonCodec());
     }
 
@@ -56,19 +63,18 @@ public class Pipes {
 
     public void startPipe(Pipe pipe, Handler<AsyncResult<Void>> completionHandler) {
         AdminUtils.create(vertx, "localhost:2181").createTopic(pipe.getSource(), 1, 1, done -> {
-            if (done.succeeded()) {
+            if (done.succeeded() || done.cause().getMessage().contains("already exists")) {
                 Function function = functionRegistry.function(pipe.getFunction());
                 vertx.eventBus().consumer(pipe.getId(), function);
 
-                KafkaProducer<String, Bytes> kafkaProducer = KafkaProducerBuilder.pipeProducer(vertx);
-                KafkaConsumerBuilder.pipeConsumer(vertx, pipe.getId()).handler(record -> {
+                pipeConsumer(vertx, pipe.getId()).handler(record -> {
                     Map event = decodeValue(buffer(record.value().get()), Map.class);
                     DeliveryOptions headers = new DeliveryOptions().addHeader(HEADER_KEY, record.key());
                     vertx.eventBus().send(pipe.getId(), event, headers, response -> {
                         if (pipe.getTarget() != null) {
                             if (response.succeeded()) {
-                                Map<String, Object> body = (Map<String, Object>) response.result().body();
-                                kafkaProducer.write(new KafkaProducerRecordImpl<>(pipe.getTarget(), record.key(), new Bytes(encodeToBuffer(body).getBytes())));
+                                Map body = (Map) response.result().body();
+                                pipeProducer.write(new KafkaProducerRecordImpl<>(pipe.getTarget(), record.key(), new Bytes(encodeToBuffer(body).getBytes())));
                             }
                         }
                     });

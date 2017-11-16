@@ -23,7 +23,9 @@
         <!-- Dependencies versions -->
         <assertj.version>3.6.2</assertj.version>
         <debezium.version>0.5.1</debezium.version>
+        <commons-lang3.version>3.6</commons-lang3.version>
         <guava.version>23.4-jre</guava.version>
+        <lombok.version>1.16.16</lombok.version>
         <vertx.version>3.5.0</vertx.version>
 
         <!-- Plugins versions -->
@@ -74,9 +76,14 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.16.16</version>
+            <version>${lombok.version}</version>
         </dependency>
 
         <!-- Testing -->
