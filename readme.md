@@ -1,6 +1,6 @@
 # Vert.x Pipes
 
-[![Version](https://img.shields.io/badge/Vert.x%20Pipes-0.1-blue.svg)](https://github.com/hekonsek/vertx-pipes/releases)
+[![Version](https://img.shields.io/badge/Vert.x%20Pipes-0.2-blue.svg)](https://github.com/hekonsek/vertx-pipes/releases)
 [![Build](https://api.travis-ci.org/hekonsek/vertx-pipes.svg)](https://travis-ci.org/hekonsek/vertx-pipes)
 
 Vert.x-based data pipes abstraction over Apache Kafka.
@@ -12,5 +12,5 @@ In order to start using Vert.x Pipes add the following dependency to your Maven 
     <dependency>
       <groupId>com.github.hekonsek</groupId>
       <artifactId>vertx-pipes</artifactId>
-      <version>0.1</version>
+      <version>0.2</version>
     </dependency>
