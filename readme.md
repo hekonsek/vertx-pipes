@@ -11,6 +11,6 @@ In order to start using Vert.x Pipes add the following dependency to your Maven 
 
     <dependency>
       <groupId>com.github.hekonsek</groupId>
-      <artifactId>kafka-pipes</artifactId>
+      <artifactId>vertx-pipes</artifactId>
       <version>0.1</version>
     </dependency>
