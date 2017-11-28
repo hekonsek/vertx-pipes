@@ -1,8 +1,8 @@
-package com.github.hekonsek.vertx.pipes.internal;
+package com.github.hekonsek.rxjava.pipes;
 
 import com.google.common.collect.ImmutableMap;
-import io.vertx.core.Vertx;
-import io.vertx.kafka.client.producer.KafkaProducer;
+import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.kafka.client.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
